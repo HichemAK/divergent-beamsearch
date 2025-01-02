@@ -1,0 +1,23 @@
+[project]
+name = "beamsearch-aligned"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "multi-choices-parser>=0.9.57",
+    "torch>=2.5.1",
+    "transformers>=4.47.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
+
+[project.scripts]
+beamsearch-aligned = "beamsearch_aligned:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
