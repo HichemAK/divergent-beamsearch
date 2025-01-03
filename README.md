@@ -5,7 +5,7 @@ Divergent Beam Search is a variant of the beam search algorithm. Unlike the beam
 
 The core idea of this algorithm can be roughly summarized in the following optimization problem:
 
-$$\max_{ans \in A} P(ans + diverging into another subject \mid prompt)$$
+$$\max_{ans \in A} P(ans + diverging\ into\ another\ subject \mid prompt)$$
 
 It is important that the set of answers $A$ is sufficiently exhaustive for this method to work. Otherwise, the algorithm could unjustifiably conclude that an answer is not being followed by the answer while this longer answer exists but is not included in the set $A$.   
 
