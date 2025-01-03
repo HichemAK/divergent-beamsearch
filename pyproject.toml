@@ -1,7 +1,7 @@
 [project]
-name = "beamsearch-aligned"
+name = "divergent-beamsearch"
 version = "0.1.0"
-description = "Add your description here"
+description = "A variant of the beam search algorithm that focuses on finding answers that maximize the probability of generating an answer before diverging into another subject."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,9 +14,6 @@ dependencies = [
 dev = [
     "pytest>=8.3.4",
 ]
-
-[project.scripts]
-beamsearch-aligned = "beamsearch_aligned:main"
 
 [build-system]
 requires = ["hatchling"]

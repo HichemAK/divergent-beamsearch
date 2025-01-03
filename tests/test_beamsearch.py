@@ -2,7 +2,7 @@ import pytest
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from multi_choices_parser import MultiChoicesParser
-from beamsearch_aligned.beamsearch import beamsearch_aligned, log1mexp
+from divergent_beamsearch.algorithm import divergent_beamsearch, log1mexp
 
 @pytest.fixture
 def model_and_tokenizer():
@@ -10,7 +10,7 @@ def model_and_tokenizer():
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     return model, tokenizer
 
-def test_beamsearch_aligned(model_and_tokenizer):
+def test_divergent_beamsearch(model_and_tokenizer):
     model, tokenizer = model_and_tokenizer
     prompt = "The capital of France is"
     input_ids = tokenizer.encode(prompt, return_tensors="pt")
@@ -26,7 +26,7 @@ def test_beamsearch_aligned(model_and_tokenizer):
     logprob_hilton = model(torch.cat([input_ids, torch.tensor(tokenized_answers[1][0]).view(1,1)], dim=-1)).logits.log_softmax(dim=-1)[0, -1, tokenized_answers[1][1]]
     logprob_paris_hilton = logprob_paris + logprob_hilton
 
-    scores, solutions = beamsearch_aligned(
+    scores, solutions = divergent_beamsearch(
         input_ids=input_ids,
         model=model,
         beam_size=beam_size,
