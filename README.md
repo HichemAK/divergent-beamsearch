@@ -25,7 +25,7 @@ Here's a brief example of how to use `divergent-beamsearch`:
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from multi_choices_parser import MultiChoicesParser
-from divergent_beamsearch.beamsearch import divergent_beamsearch
+from divergent_beamsearch import divergent_beamsearch
 
 # Load model and tokenizer
 model = GPT2LMHeadModel.from_pretrained("gpt2")
