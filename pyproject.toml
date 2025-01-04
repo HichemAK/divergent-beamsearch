@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "multi-choices-parser>=0.9.57",
-    "torch>=2.5.1",
+    "torch>=2.0.0",
     "transformers>=4.47.1",
 ]
 
