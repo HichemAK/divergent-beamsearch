@@ -47,12 +47,29 @@ def log1mexp(x: torch.Tensor) -> torch.Tensor:
         (-x.exp()).log1p(),
     )
 
+class AcceptEverythingParser:
+    def __init__(self, vocab_size : int):
+        self.vocab_size = vocab_size
+        self.tokens = tuple(range(vocab_size))
+
+    def step(self, token):
+        pass
+
+    def next(self):
+        return self.tokens
+    
+    def copy(self):
+        return self
+
 @torch.no_grad()
 def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, multi_choices_parser : MultiChoicesParser, pad_token_id : int, batch_size=32, num_solutions = None) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
     
     if num_solutions is None:
         num_solutions = beam_size
+    vanilla = multi_choices_parser is None
+    if vanilla:
+        multi_choices_parser = AcceptEverythingParser(model.config.vocab_size)
 
     parsers_unfinished = [multi_choices_parser]
     scores_finished = torch.tensor([], dtype=torch.float)
@@ -73,9 +90,10 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
         logprobs_filtered = apply_mask_tokens(logprobs, parsers_tokens)
         if len(logprobs_filtered):
             topk = torch.topk(logprobs_filtered, beam_size, dim=-1) # shape (batch_size, beam_size)
-            topk_global = topk.values.flatten().topk(beam_size)
+            values = topk.values + scores_unfinished.unsqueeze(-1)
+            topk_global = values.flatten().topk(beam_size)
             best_tokens_row = topk_global.indices // beam_size
-            best_tokens, best_tokens_logprobs = topk.indices[best_tokens_row, topk_global.indices % beam_size], topk_global.values
+            best_tokens, best_tokens_logprobs = topk.indices[best_tokens_row, topk_global.indices % beam_size], topk.values[best_tokens_row, topk_global.indices % beam_size]
             notinf = ~best_tokens_logprobs.isinf()
             best_tokens, best_tokens_row, best_tokens_logprobs = best_tokens[notinf], best_tokens_row[notinf], best_tokens_logprobs[notinf]
         else:
@@ -104,9 +122,11 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
         parsers_unfinished = [parsers_unfinished[row].copy() for row in best_tokens_row]
         for parser, token in zip(parsers_unfinished, best_tokens.tolist()):
             parser.step(token)
+
+    # Special case of vanilla beam search where all answers are valid
+    if vanilla:
+        order = scores_unfinished.argsort(descending=True)
+        scores_finished = scores_unfinished[order][:num_solutions]
+        solutions_finished = solutions_unfinished[order][:num_solutions]
     
     return scores_finished, solutions_finished
-        
-
-        
-        
