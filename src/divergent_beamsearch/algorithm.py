@@ -35,10 +35,12 @@ def apply_mask_tokens(pred : torch.Tensor, parsers_tokens):
     return pred[~pred.isinf().all(dim=-1)]
 
 
-def batched_inference_logits(model : GPT2LMHeadModel, input_ids : torch.Tensor, batch_size : int = 32) -> torch.Tensor:
+def batched_inference_logits(model : GPT2LMHeadModel, input_ids : torch.Tensor, attention_mask : torch.Tensor | None = None, batch_size : int = 32) -> torch.Tensor:
     logits = []
+    if attention_mask is None:
+        attention_mask = torch.ones_like(input_ids)
     for i in range(0, input_ids.shape[0], batch_size):
-        logits.append(model(input_ids[i:i+batch_size]).logits)
+        logits.append(model(input_ids[i:i+batch_size], attention_mask=attention_mask[i:i+batch_size]).logits)
     return torch.cat(logits, dim=0)
 
 def select_mask(source : list, mask : list[bool]) -> list:
@@ -98,7 +100,7 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
     for _ in range(max_length):
         if len(input_ids_unfinished) == 0:
             break
-        pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size)[:, -1].cpu()
+        pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size=batch_size)[:, -1].cpu()
         parsers_tokens, can_end = get_parsers_tokens(parsers_unfinished)
         logprobs = torch.log_softmax(pred, dim=-1)
         logprobs_filtered = apply_mask_tokens(logprobs, parsers_tokens)
@@ -144,3 +146,60 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
         solutions_finished = solutions_unfinished[order][:num_solutions]
     
     return scores_finished, solutions_finished
+
+
+def set_slice_row(x : torch.Tensor, slices : torch.IntTensor, value) -> torch.Tensor:
+    indices = [torch.arange(start, end) for start, end in slices]
+    for i in range(slices.size(0)):
+        x[i].index_fill_(0, indices[i], 0)
+
+@torch.no_grad()
+def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : GPT2LMHeadModel, parsers : Parser | list[Parser] | None, batch_size=32, start : int | torch.IntTensor = None) -> torch.FloatTensor:
+    if start is None:
+        start = 0
+    if isinstance(start, int):
+        start = torch.tensor([start]*input_ids.shape[0])
+    assert start.shape[0] == input_ids.shape[0]
+    # -1 because next token offset
+    start = start - 1
+
+    if attention_mask is None:
+        attention_mask = torch.ones_like(input_ids)
+
+    logits = batched_inference_logits(model, input_ids, attention_mask, batch_size).cpu()
+    input_ids = input_ids.cpu()
+    attention_mask = attention_mask.cpu()
+
+    logsoftmax = torch.log_softmax(logits, dim=-1)
+    log_probs = torch.gather(
+        logsoftmax[:, :-1, :], 2, input_ids[:, 1:, None]
+    ).squeeze(-1)
+    mask = attention_mask[:, 1:].cpu().clone()
+
+    input_len = attention_mask.sum(-1)
+    pos = torch.stack([torch.zeros_like(start), start], dim=-1)
+    pos_anti = pos.flip(1)
+    pos_anti[:, -1] = input_len
+    set_slice_row(mask, pos, 0)
+    vanilla_prob = (log_probs * mask).sum(-1)
+    if parsers is None:
+        parsers = AcceptEverythingParser(model.config.vocab_size)
+    if not isinstance(parsers, (tuple, list)):
+        parsers = [parsers.copy() for _ in range(len(input_ids))]
+    next_possible_tokens = []
+    for i, parser in enumerate(parsers):
+        # +1 because no next-token offset
+        start = pos_anti[i,0]+1
+        for input_id, att in zip(input_ids[i, start:].tolist(), attention_mask[i, start:].tolist()):
+            if not att:
+                break
+            parser.step(input_id)
+        next_tokens = list(parser.next())
+        try:
+            next_tokens.remove(end_symb)
+        except ValueError:
+            pass
+        next_possible_tokens.append(next_tokens)
+    last_token_log_probs = torch.stack([log1mexp(logsoftmax[i, input_len[i]-1, tokens].logsumexp(-1)).squeeze() for i, tokens in enumerate(next_possible_tokens)])
+    prob = vanilla_prob + last_token_log_probs
+    return prob

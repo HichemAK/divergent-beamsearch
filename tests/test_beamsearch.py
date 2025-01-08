@@ -3,7 +3,7 @@ import pytest
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from multi_choices_parser import MultiChoicesParser
-from divergent_beamsearch.algorithm import divergent_beamsearch, log1mexp
+from divergent_beamsearch.algorithm import divergent_beamsearch, divergent_logprob, log1mexp
 from multi_choices_parser import MultiChoicesParser
 
 @pytest.fixture
@@ -45,6 +45,40 @@ def test_divergent_beamsearch(model_and_tokenizer, device):
     assert (solutions == true_solutions).all(), "Beam search did not return the expected solutions"
     assert scores[0] == logprob_paris + log1mexp(logprob_hilton), "Beam search did not return the expected score"
     assert scores[1] == logprob_paris_hilton, "Beam search did not return the expected score"
+
+@pytest.mark.parametrize("device", ['cpu', 'cuda'])
+def test_divergent_logprob(model_and_tokenizer, device):
+    if device == 'cuda' and not torch.cuda.is_available():
+        pytest.skip("CUDA is not available on this machine.")
+    model, tokenizer = model_and_tokenizer
+    model.to(device)
+    prompts = [
+        "The capital of France is Paris",
+        "The top model Paris Hilton"
+    ]
+    tokenizer.pad_token = tokenizer.eos_token
+    inp = tokenizer(prompts, return_tensors="pt", padding=True)
+    input_ids = inp.input_ids.to(device)
+    attention_mask = inp.attention_mask.to(device)
+
+    possible_answers = [' Paris', ' Paris Hilton']
+    tokenized_answers = tokenizer(possible_answers).input_ids
+    multi_choices_parser = MultiChoicesParser([tokenized_answers])
+
+    input_len = attention_mask.sum(-1).cpu()
+    probs = divergent_logprob(input_ids, attention_mask, model, multi_choices_parser, start=input_len - torch.tensor([1,2]))
+    
+    input_ids_1st = tokenizer("The capital of France is Paris Hilton", return_tensors='pt').input_ids.to(device)
+    logprobs_1st = model(input_ids_1st).logits.cpu().log_softmax(dim=-1)
+    logprob_paris = logprobs_1st[0, input_ids_1st.shape[1]-3, tokenized_answers[1][0]] # P(Paris | The capital of France is)
+    logprob_hilton = logprobs_1st[0, input_ids_1st.shape[1]-2, tokenized_answers[1][1]] # P(Hilton | The capital of France is Paris)
+
+    input_ids_2nd = tokenizer("The top model Paris Hilton", return_tensors='pt').input_ids.to(device)
+    logprobs_2nd = model(input_ids_2nd).logits.cpu().log_softmax(dim=-1)
+    logprob_paris_hilton = logprobs_2nd[0, -3, tokenized_answers[1][0]] + logprobs_2nd[0, -2, tokenized_answers[1][1]] # P(Paris Hilton | The top model)
+
+    assert torch.isclose(probs[0], logprob_paris + log1mexp(logprob_hilton)), "P_divergent(Paris | The capital of France is) is incorrect"
+    assert torch.isclose(probs[1], logprob_paris_hilton), "P_divergent(Paris Hilton | The top model) is incorrect"
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
 def test_vanilla_beamsearch(model_and_tokenizer, device):
