@@ -12,10 +12,14 @@ def model_and_tokenizer():
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     return model, tokenizer
 
-def test_divergent_beamsearch(model_and_tokenizer):
+@pytest.mark.parametrize("device", ['cpu', 'cuda'])
+def test_divergent_beamsearch(model_and_tokenizer, device):
+    if device == 'cuda' and not torch.cuda.is_available():
+        pytest.skip("CUDA is not available on this machine.")
     model, tokenizer = model_and_tokenizer
+    model.to(device)
     prompt = "The capital of France is"
-    input_ids = tokenizer.encode(prompt, return_tensors="pt")
+    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
     beam_size = 5
     max_length = 10
     pad_token_id = tokenizer.eos_token_id
@@ -24,8 +28,8 @@ def test_divergent_beamsearch(model_and_tokenizer):
     tokenized_answers = tokenizer(possible_answers).input_ids
     multi_choices_parser = MultiChoicesParser([tokenized_answers])
 
-    logprob_paris = model(input_ids).logits.log_softmax(dim=-1)[0, -1, tokenized_answers[0][0]]
-    logprob_hilton = model(torch.cat([input_ids, torch.tensor(tokenized_answers[1][0]).view(1,1)], dim=-1)).logits.log_softmax(dim=-1)[0, -1, tokenized_answers[1][1]]
+    logprob_paris = model(input_ids).logits.cpu().log_softmax(dim=-1)[0, -1, tokenized_answers[0][0]]
+    logprob_hilton = model(torch.cat([input_ids, torch.tensor(tokenized_answers[1][0], device=device).view(1,1)], dim=-1)).logits.cpu().log_softmax(dim=-1)[0, -1, tokenized_answers[1][1]]
     logprob_paris_hilton = logprob_paris + logprob_hilton
 
     scores, solutions = divergent_beamsearch(
@@ -33,7 +37,7 @@ def test_divergent_beamsearch(model_and_tokenizer):
         model=model,
         beam_size=beam_size,
         max_length=max_length,
-        multi_choices_parser=multi_choices_parser,
+        parser=multi_choices_parser,
         pad_token_id=pad_token_id,
         num_solutions=10
     )
@@ -42,16 +46,19 @@ def test_divergent_beamsearch(model_and_tokenizer):
     assert scores[0] == logprob_paris + log1mexp(logprob_hilton), "Beam search did not return the expected score"
     assert scores[1] == logprob_paris_hilton, "Beam search did not return the expected score"
 
-def test_vanilla_beamsearch(model_and_tokenizer):
+@pytest.mark.parametrize("device", ['cpu', 'cuda'])
+def test_vanilla_beamsearch(model_and_tokenizer, device):
+    if device == 'cuda' and not torch.cuda.is_available():
+        pytest.skip("CUDA is not available on this machine.")
     # Verify that divergent beam search where all answers are valid is equivalent to vanilla beam search 
     # Results of beam search were compared with huggingface implementation (https://huggingface.co/spaces/m-ric/beam_search_visualizer)
     model, tok = model_and_tokenizer
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
     model.eval()
     prompt = "The capital of France is"
     input_ids = tok(prompt, return_tensors="pt").input_ids.to(device)
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=1, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=1, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [" the", " now", " a"]
@@ -60,7 +67,7 @@ def test_vanilla_beamsearch(model_and_tokenizer):
     ).all()
 
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=2, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=2, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [" the capital", " now home", " now the"]
@@ -69,7 +76,7 @@ def test_vanilla_beamsearch(model_and_tokenizer):
     ).all()
 
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=3, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=3, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [" the capital of", " now home to", " now the capital"]
@@ -78,7 +85,7 @@ def test_vanilla_beamsearch(model_and_tokenizer):
     ).all()
 
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=4, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=4, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [
@@ -91,7 +98,7 @@ def test_vanilla_beamsearch(model_and_tokenizer):
     ).all()
 
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=5, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=5, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [
@@ -105,7 +112,7 @@ def test_vanilla_beamsearch(model_and_tokenizer):
 
 
     scores, sequences = divergent_beamsearch(
-        input_ids, model, beam_size=3, max_length=6, pad_token_id=tok.eos_token_id, num_solutions=3, multi_choices_parser=None
+        input_ids, model, beam_size=3, max_length=6, pad_token_id=tok.eos_token_id, num_solutions=3, parser=None
     )
     sequences = [tok.decode(s) for s in sequences]
     assert sequences == [

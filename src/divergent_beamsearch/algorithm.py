@@ -4,7 +4,17 @@ from transformers import GPT2LMHeadModel
 from multi_choices_parser import MultiChoicesParser, end_symb
 
 
-def get_parsers_tokens(parsers : list[MultiChoicesParser]) -> tuple[list, list[int]]:
+class Parser:
+    def step(self, token):
+        raise NotImplementedError
+
+    def next(self):
+        raise NotImplementedError
+    
+    def copy(self):
+        raise NotImplementedError
+
+def get_parsers_tokens(parsers : list[Parser]) -> tuple[list, list[int]]:
     parsers_tokens = []
     can_end = []
     for parser in parsers:
@@ -47,7 +57,10 @@ def log1mexp(x: torch.Tensor) -> torch.Tensor:
         (-x.exp()).log1p(),
     )
 
-class AcceptEverythingParser:
+
+
+
+class AcceptEverythingParser(Parser):
     def __init__(self, vocab_size : int):
         self.vocab_size = vocab_size
         self.tokens = tuple(range(vocab_size))
@@ -62,16 +75,18 @@ class AcceptEverythingParser:
         return self
 
 @torch.no_grad()
-def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, multi_choices_parser : MultiChoicesParser, pad_token_id : int, batch_size=32, num_solutions = None) -> tuple[torch.Tensor, torch.Tensor]:
+def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
+    device = input_ids.device
+    input_ids = input_ids.cpu()
     
     if num_solutions is None:
         num_solutions = beam_size
-    vanilla = multi_choices_parser is None
+    vanilla = parser is None
     if vanilla:
-        multi_choices_parser = AcceptEverythingParser(model.config.vocab_size)
+        parser = AcceptEverythingParser(model.config.vocab_size)
 
-    parsers_unfinished = [multi_choices_parser]
+    parsers_unfinished = [parser]
     scores_finished = torch.tensor([], dtype=torch.float)
     solutions_finished = torch.tensor([], dtype=torch.long).view(0,0)
     
@@ -83,9 +98,8 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
     for _ in range(max_length):
         if len(input_ids_unfinished) == 0:
             break
-        pred = batched_inference_logits(model, input_ids_unfinished, batch_size)[:, -1].cpu()
+        pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size)[:, -1].cpu()
         parsers_tokens, can_end = get_parsers_tokens(parsers_unfinished)
-        # input_ids_unfinished = input_ids_unfinished[~torch.tensor(can_only_end)]
         logprobs = torch.log_softmax(pred, dim=-1)
         logprobs_filtered = apply_mask_tokens(logprobs, parsers_tokens)
         if len(logprobs_filtered):
