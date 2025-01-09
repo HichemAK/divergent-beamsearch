@@ -1,1 +1,1 @@
-from .algorithm import divergent_beamsearch
+from .algorithm import divergent_beamsearch, divergent_logprob
