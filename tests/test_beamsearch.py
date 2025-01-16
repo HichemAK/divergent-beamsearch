@@ -44,11 +44,11 @@ def test_divergent_beamsearch(model_and_tokenizer, device, end_symb):
     model.to(device)
     prompt = "The capital of France is"
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-    beam_size = 5
+    beam_size = 10
     max_length = 10
     pad_token_id = tokenizer.eos_token_id
 
-    possible_answers = [' Paris', ' Madrid', ' Paris Hilton']
+    possible_answers = [' Paris', ' Madrid', ' Paris Hilton', ' Bri bra brouuu Mario Brooos']
     tokenized_answers = tokenizer(possible_answers).input_ids
 
     if end_symb == 'tokenizer':
@@ -62,6 +62,9 @@ def test_divergent_beamsearch(model_and_tokenizer, device, end_symb):
         logprob_paris_hilton = logprob_paris + logprob_hilton
         logprob_madrid = model(input_ids).logits.cpu().log_softmax(dim=-1)[0, -1, tokenized_answers[1][0]]
         logprob_paris_diverge = logprob_paris + log1mexp(logprob_hilton)
+        input_garbage = torch.tensor(input_ids.tolist()[0] + tokenized_answers[-1]).unsqueeze(0).to(device)
+        logsoftmax_garbage = model(input_garbage).logits.log_softmax(-1)
+        logprob_garbage = torch.gather(logsoftmax_garbage[:, 4:-1, :], 2, input_garbage[:, 5:, None]).squeeze(-1).sum(-1)
 
     scores, solutions = divergent_beamsearch(
         input_ids=input_ids,
@@ -70,7 +73,7 @@ def test_divergent_beamsearch(model_and_tokenizer, device, end_symb):
         max_length=max_length,
         parser=multi_choices_parser,
         pad_token_id=pad_token_id,
-        num_solutions=10,
+        num_solutions=beam_size,
         end_symb=end_symb
     )
     true_solutions = torch.nn.utils.rnn.pad_sequence([torch.tensor(ans) for ans in tokenized_answers], batch_first=True, padding_value=pad_token_id)
@@ -78,6 +81,7 @@ def test_divergent_beamsearch(model_and_tokenizer, device, end_symb):
     assert torch.isclose(scores[0], logprob_paris_diverge), "Beam search did not return the expected score"
     assert torch.isclose(scores[1], logprob_madrid), "Beam search did not return the expected score"
     assert torch.isclose(scores[2], logprob_paris_hilton), "Beam search did not return the expected score"
+    assert torch.isclose(scores[3], logprob_garbage), "Beam search did not return the expected score"
 
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])

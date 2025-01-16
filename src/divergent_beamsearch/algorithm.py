@@ -82,6 +82,14 @@ def index_reduce_lists(x : torch.Tensor, indices : list[list[int]], reduce_func=
         values.append(reduce_func(x[i, index], dim=-1))
     return torch.tensor(values, dtype=x.dtype, device=x.device, requires_grad=x.requires_grad)
 
+def pad_to_same_size(tensors : list[torch.Tensor], padding_value : int) -> torch.Tensor:
+    max_size = max(x.shape[-1] for x in tensors)
+    padded_tensors = []
+    for tensor in tensors:
+        pad = torch.full((tensor.shape[0], max_size - tensor.shape[1]), padding_value, dtype=torch.long)
+        padded_tensors.append(torch.cat([tensor, pad], dim=-1))
+    return torch.cat(padded_tensors, dim=0)
+
 @torch.no_grad()
 def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=DEFAULT_END_SYMB) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
@@ -130,8 +138,11 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
         scores_finished_current = scores_finished_current + log1mexp(logprob_other_ans)
         scores_finished = torch.cat([scores_finished, scores_finished_current])
         if len(solutions_finished_current):
-            pad = torch.full((len(scores_finished_current), solutions_finished_current.shape[1] - solutions_finished.shape[1]), pad_token_id, dtype=torch.long)
-            solutions_finished = torch.cat([solutions_finished.view(-1, solutions_finished_current.shape[1]+pad.shape[1]), torch.cat([solutions_finished_current, pad], dim=1)], dim=0)
+            if len(solutions_finished):
+                solutions_finished = pad_to_same_size([solutions_finished, solutions_finished_current], 
+                                                                    padding_value=pad_token_id)
+            else:
+                solutions_finished = solutions_finished_current
         if solutions_finished.numel():
             # Keep num_solutions best solutions in finished
             order = scores_finished.argsort(descending=True)
