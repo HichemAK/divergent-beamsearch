@@ -19,10 +19,10 @@ def get_parsers_tokens(parsers : list[Parser], end_symb) -> tuple[list, list[int
     can_end = []
     for parser in parsers:
         tokens = list(parser.next())
-        if end_symb in tokens:
-            can_end.append(True)
+        try:
             tokens.remove(end_symb)
-        else:
+            can_end.append(True)
+        except ValueError:         
             can_end.append(False)
         parsers_tokens.append(tokens)
     return parsers_tokens, can_end
@@ -140,6 +140,7 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
             parser.step(token)
 
     # Special case of vanilla beam search where all answers are valid
+    # Warning : In this case model will not stop on end_of_sentence token
     if vanilla:
         order = scores_unfinished.argsort(descending=True)
         scores_finished = scores_unfinished[order][:num_solutions]
