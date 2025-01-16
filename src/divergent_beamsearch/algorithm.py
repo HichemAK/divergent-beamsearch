@@ -1,7 +1,7 @@
 import math
 import torch
 from transformers import GPT2LMHeadModel
-from multi_choices_parser import end_symb
+from multi_choices_parser import DEFAULT_END_SYMB
 
 
 class Parser:
@@ -77,7 +77,7 @@ class AcceptEverythingParser(Parser):
         return self
 
 @torch.no_grad()
-def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=end_symb) -> tuple[torch.Tensor, torch.Tensor]:
+def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=DEFAULT_END_SYMB) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
     device = input_ids.device
     input_ids = input_ids.cpu()
@@ -155,7 +155,9 @@ def set_slice_row(x : torch.Tensor, slices : torch.IntTensor, value) -> torch.Te
         x[i].index_fill_(0, indices[i], 0)
 
 @torch.no_grad()
-def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : GPT2LMHeadModel, parsers : Parser | list[Parser] | None, batch_size=32, start : int | torch.IntTensor = None) -> torch.FloatTensor:
+def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : GPT2LMHeadModel, 
+                      parsers : Parser | list[Parser] | None, batch_size=32, 
+                      start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB) -> torch.FloatTensor:
     if start is None:
         start = 0
     if isinstance(start, int):

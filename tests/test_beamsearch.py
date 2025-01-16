@@ -4,7 +4,10 @@ import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from multi_choices_parser import MultiChoicesParser
 from divergent_beamsearch.algorithm import divergent_beamsearch, divergent_logprob, log1mexp
-from multi_choices_parser import MultiChoicesParser
+from multi_choices_parser import MultiChoicesParser, DEFAULT_END_SYMB
+
+
+TEST_END_SYMBS = [DEFAULT_END_SYMB, 'tokenizer']
 
 @pytest.fixture
 def model_and_tokenizer():
@@ -33,7 +36,8 @@ def fakemodel_and_tokenizer():
     return model, tokenizer
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
-def test_divergent_beamsearch(fakemodel_and_tokenizer, device):
+@pytest.mark.parametrize("end_symb", TEST_END_SYMBS)
+def test_divergent_beamsearch(fakemodel_and_tokenizer, device, end_symb):
     if device == 'cuda' and not torch.cuda.is_available():
         pytest.skip("CUDA is not available on this machine.")
     model, tokenizer = fakemodel_and_tokenizer
@@ -46,7 +50,11 @@ def test_divergent_beamsearch(fakemodel_and_tokenizer, device):
 
     possible_answers = [' Paris', ' Paris Hilton']
     tokenized_answers = tokenizer(possible_answers).input_ids
-    multi_choices_parser = MultiChoicesParser([tokenized_answers])
+
+    if end_symb == 'tokenizer':
+        end_symb = tokenizer.eos_token_id
+    
+    multi_choices_parser = MultiChoicesParser([tokenized_answers], end_symb=end_symb)
 
     logprob_paris = model(input_ids).logits.cpu().log_softmax(dim=-1)[0, -1, tokenized_answers[0][0]]
     logprob_hilton = model(torch.cat([input_ids, torch.tensor(tokenized_answers[1][0], device=device).view(1,1)], dim=-1)).logits.cpu().log_softmax(dim=-1)[0, -1, tokenized_answers[1][1]]
@@ -59,7 +67,8 @@ def test_divergent_beamsearch(fakemodel_and_tokenizer, device):
         max_length=max_length,
         parser=multi_choices_parser,
         pad_token_id=pad_token_id,
-        num_solutions=10
+        num_solutions=10,
+        end_symb=end_symb
     )
     true_solutions = torch.nn.utils.rnn.pad_sequence([torch.tensor(ans) for ans in tokenized_answers], batch_first=True, padding_value=pad_token_id)
     assert (solutions == true_solutions).all(), "Beam search did not return the expected solutions"
@@ -67,7 +76,8 @@ def test_divergent_beamsearch(fakemodel_and_tokenizer, device):
     assert scores[1] == logprob_paris_hilton, "Beam search did not return the expected score"
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
-def test_divergent_logprob(fakemodel_and_tokenizer, device):
+@pytest.mark.parametrize("end_symb", TEST_END_SYMBS)
+def test_divergent_logprob(fakemodel_and_tokenizer, device, end_symb):
     if device == 'cuda' and not torch.cuda.is_available():
         pytest.skip("CUDA is not available on this machine.")
     model, tokenizer = fakemodel_and_tokenizer
@@ -83,10 +93,14 @@ def test_divergent_logprob(fakemodel_and_tokenizer, device):
 
     possible_answers = [' Paris', ' Paris Hilton']
     tokenized_answers = tokenizer(possible_answers).input_ids
-    multi_choices_parser = MultiChoicesParser([tokenized_answers])
+
+    if end_symb == 'tokenizer':
+        end_symb = tokenizer.eos_token_id
+
+    multi_choices_parser = MultiChoicesParser([tokenized_answers], end_symb=end_symb)
 
     input_len = attention_mask.sum(-1).cpu()
-    probs = divergent_logprob(input_ids, attention_mask, model, multi_choices_parser, start=input_len - torch.tensor([1,2]))
+    probs = divergent_logprob(input_ids, attention_mask, model, multi_choices_parser, start=input_len - torch.tensor([1,2]), end_symb=end_symb)
     
     input_ids_1st = tokenizer("The capital of France is Paris Hilton", return_tensors='pt').input_ids.to(device)
     logprobs_1st = model(input_ids_1st).logits.cpu().log_softmax(dim=-1)

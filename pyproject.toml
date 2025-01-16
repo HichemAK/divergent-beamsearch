@@ -1,11 +1,11 @@
 [project]
 name = "divergent-beamsearch"
-version = "0.1.5"
+version = "0.1.6"
 description = "A variant of the beam search algorithm that focuses on finding answers that maximize the probability of generating an answer before diverging into another subject."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "multi-choices-parser>=0.9.57",
+    "multi-choices-parser>=0.9.61",
     "torch>=2.0.0",
     "transformers>=4.47.1",
 ]

@@ -73,7 +73,7 @@ wheels = [
 
 [[package]]
 name = "divergent-beamsearch"
-version = "0.1.1"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "multi-choices-parser" },
@@ -88,7 +88,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "multi-choices-parser", specifier = ">=0.9.57" },
+    { name = "multi-choices-parser", specifier = ">=0.9.61" },
     { name = "torch", specifier = ">=2.0.0" },
     { name = "transformers", specifier = ">=4.47.1" },
 ]
@@ -221,11 +221,11 @@ wheels = [
 
 [[package]]
 name = "multi-choices-parser"
-version = "0.9.57"
+version = "0.9.61"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/69/55/e2228a3839d46282947f4383bc0a588751b164a24c162e4642a65ffe906f/multi_choices_parser-0.9.57.tar.gz", hash = "sha256:f4f42c4a6abbaa5a2529b976d6a4d756edb8fa422a59b98f30fd2a4331995600", size = 7662 }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/17/90a6125a2145c03e39c3e7f78f65121eb14dedb9de8b40aee3c8a24a709b/multi_choices_parser-0.9.61.tar.gz", hash = "sha256:be932cac4aeabe9ee057c6d4592ea4325a0a92e52758d77a9e08bafa2cd23294", size = 7889 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/bf/e8d829acca04bc1429ca15582321c3b4702db0e071dbddcf3246f1895956/multi_choices_parser-0.9.57-py3-none-any.whl", hash = "sha256:ff58ac7c440d3129ffe89420039c4ddd6483e54b0526f68d25933e4f62d3c8d2", size = 6702 },
+    { url = "https://files.pythonhosted.org/packages/3c/4f/c5a514a510779202ff37505220edfba9154ceff31958ed71fa1878781af9/multi_choices_parser-0.9.61-py3-none-any.whl", hash = "sha256:36bc367bceb66bbfb1bea26d9a38aa9cd10273b54cef331dd7c69da582fb9c2a", size = 6870 },
 ]
 
 [[package]]
@@ -618,21 +618,21 @@ dependencies = [
     { name = "fsspec" },
     { name = "jinja2" },
     { name = "networkx" },
-    { name = "nvidia-cublas-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-cupti-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-runtime-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cufft-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-curand-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusolver-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparse-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nccl-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvtx-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cufft-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-curand-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cusolver-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-nccl-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
+    { name = "nvidia-nvtx-cu12", marker = "platform_machine == 'x86_64' and platform_system == 'Linux'" },
     { name = "setuptools", marker = "python_full_version >= '3.12'" },
     { name = "sympy" },
-    { name = "triton", marker = "python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "triton", marker = "python_full_version < '3.13' and platform_machine == 'x86_64' and platform_system == 'Linux'" },
     { name = "typing-extensions" },
 ]
 wheels = [
@@ -652,7 +652,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
