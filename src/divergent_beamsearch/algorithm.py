@@ -14,7 +14,7 @@ class Parser:
     def copy(self):
         raise NotImplementedError
 
-def get_parsers_tokens(parsers : list[Parser]) -> tuple[list, list[int]]:
+def get_parsers_tokens(parsers : list[Parser], end_symb) -> tuple[list, list[int]]:
     parsers_tokens = []
     can_end = []
     for parser in parsers:
@@ -77,7 +77,7 @@ class AcceptEverythingParser(Parser):
         return self
 
 @torch.no_grad()
-def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None) -> tuple[torch.Tensor, torch.Tensor]:
+def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=end_symb) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
     device = input_ids.device
     input_ids = input_ids.cpu()
@@ -101,7 +101,7 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
         if len(input_ids_unfinished) == 0:
             break
         pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size=batch_size)[:, -1].cpu()
-        parsers_tokens, can_end = get_parsers_tokens(parsers_unfinished)
+        parsers_tokens, can_end = get_parsers_tokens(parsers_unfinished, end_symb)
         logprobs = torch.log_softmax(pred, dim=-1)
         logprobs_filtered = apply_mask_tokens(logprobs, parsers_tokens)
         if len(logprobs_filtered):
