@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from multi_choices_parser import MultiChoicesParser
 from divergent_beamsearch.algorithm import divergent_beamsearch, divergent_logprob, log1mexp
 from multi_choices_parser import MultiChoicesParser
@@ -12,11 +12,31 @@ def model_and_tokenizer():
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     return model, tokenizer
 
+@pytest.fixture
+def fakemodel_and_tokenizer():
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+    # Define a small GPT-2 configuration
+    config = GPT2Config(
+        vocab_size=tokenizer.vocab_size,  # Use the default GPT-2 tokenizer vocab size
+        n_positions=64,  # Maximum sequence length
+        n_ctx=64,  # Context window size
+        n_embd=8,  # Size of the embeddings
+        n_layer=1,  # Number of layers
+        n_head=2,  # Number of attention heads
+    )
+
+    # Instantiate a model with the custom configuration
+    model = GPT2LMHeadModel(config)
+    model.eval()
+
+    return model, tokenizer
+
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
-def test_divergent_beamsearch(model_and_tokenizer, device):
+def test_divergent_beamsearch(fakemodel_and_tokenizer, device):
     if device == 'cuda' and not torch.cuda.is_available():
         pytest.skip("CUDA is not available on this machine.")
-    model, tokenizer = model_and_tokenizer
+    model, tokenizer = fakemodel_and_tokenizer
     model.to(device)
     prompt = "The capital of France is"
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
@@ -47,10 +67,10 @@ def test_divergent_beamsearch(model_and_tokenizer, device):
     assert scores[1] == logprob_paris_hilton, "Beam search did not return the expected score"
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
-def test_divergent_logprob(model_and_tokenizer, device):
+def test_divergent_logprob(fakemodel_and_tokenizer, device):
     if device == 'cuda' and not torch.cuda.is_available():
         pytest.skip("CUDA is not available on this machine.")
-    model, tokenizer = model_and_tokenizer
+    model, tokenizer = fakemodel_and_tokenizer
     model.to(device)
     prompts = [
         "The capital of France is Paris",

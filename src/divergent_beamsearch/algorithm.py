@@ -1,7 +1,7 @@
 import math
 import torch
 from transformers import GPT2LMHeadModel
-from multi_choices_parser import MultiChoicesParser, end_symb
+from multi_choices_parser import end_symb
 
 
 class Parser:
