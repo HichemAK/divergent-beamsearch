@@ -76,6 +76,12 @@ class AcceptEverythingParser(Parser):
     def copy(self):
         return self
 
+def index_reduce_lists(x : torch.Tensor, indices : list[list[int]], reduce_func=torch.sum) -> torch.Tensor:
+    values = []
+    for i, index in enumerate(indices):
+        values.append(reduce_func(x[i, index], dim=-1))
+    return torch.tensor(values, dtype=x.dtype, device=x.device, requires_grad=x.requires_grad)
+
 @torch.no_grad()
 def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=DEFAULT_END_SYMB) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
@@ -120,7 +126,8 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
 
         scores_finished_current = scores_unfinished[can_end]
         solutions_finished_current = solutions_unfinished[can_end]
-        scores_finished_current = scores_finished_current + log1mexp(logprobs[can_end, select_mask(parsers_tokens, can_end)].logsumexp(dim=-1)).squeeze(-1)
+        logprob_other_ans = index_reduce_lists(logprobs[can_end], select_mask(parsers_tokens, can_end), reduce_func=torch.logsumexp).squeeze(-1)
+        scores_finished_current = scores_finished_current + log1mexp(logprob_other_ans)
         scores_finished = torch.cat([scores_finished, scores_finished_current])
         if len(solutions_finished_current):
             pad = torch.full((len(scores_finished_current), solutions_finished_current.shape[1] - solutions_finished.shape[1]), pad_token_id, dtype=torch.long)
