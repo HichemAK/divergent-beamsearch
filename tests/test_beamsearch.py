@@ -223,8 +223,9 @@ def test_element_wise_equivalence_divergent_logprob(fakemodel_and_tokenizer, dev
 
     logprobs_individual = []
 
-    for input_ids, attention_mask in zip(inputs.input_ids, inputs.attention_mask):
-        input_ids, attention_mask = input_ids.unsqueeze(0), attention_mask.unsqueeze(0)
+    for text in texts:
+        inputs = tokenizer(text, return_tensors='pt', padding=True).to(device)
+        input_ids, attention_mask = inputs.input_ids, inputs.attention_mask
         logprobs_individual.append(divergent_logprob(input_ids, attention_mask, model, multi_choices_parser))
     logprobs_individual = torch.tensor(logprobs_global)
 
