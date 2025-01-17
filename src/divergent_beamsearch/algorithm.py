@@ -177,10 +177,11 @@ def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | 
                       parsers : Parser | list[Parser] | None, batch_size=32, 
                       start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB) -> torch.FloatTensor:
     if start is None:
-        start = 0
+        start = 1
     if isinstance(start, int):
         start = torch.tensor([start]*input_ids.shape[0])
     assert start.shape[0] == input_ids.shape[0]
+    assert (start > 0).all()
     # -1 because next token offset
     start = start - 1
 

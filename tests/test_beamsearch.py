@@ -13,6 +13,7 @@ TEST_END_SYMBS = [DEFAULT_END_SYMB, 'tokenizer']
 def model_and_tokenizer():
     model = GPT2LMHeadModel.from_pretrained("gpt2")
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
     return model, tokenizer
 
 @pytest.fixture
@@ -32,6 +33,7 @@ def fakemodel_and_tokenizer():
     # Instantiate a model with the custom configuration
     model = GPT2LMHeadModel(config)
     model.eval()
+    tokenizer.pad_token = tokenizer.eos_token
 
     return model, tokenizer
 
@@ -95,7 +97,6 @@ def test_divergent_logprob(fakemodel_and_tokenizer, device, end_symb):
         "The capital of France is Paris",
         "The top model Paris Hilton"
     ]
-    tokenizer.pad_token = tokenizer.eos_token
     inp = tokenizer(prompts, return_tensors="pt", padding=True)
     input_ids = inp.input_ids.to(device)
     attention_mask = inp.attention_mask.to(device)
@@ -200,3 +201,29 @@ def test_vanilla_beamsearch(model_and_tokenizer, device):
     assert np.isclose(
         scores.cpu().numpy(), np.array([-8.1361, -8.7745, -9.1053]), atol=0.0001
     ).all()
+
+@pytest.mark.parametrize("device", ['cpu', 'cuda'])
+def test_element_wise_equivalence_divergent_logprob(fakemodel_and_tokenizer, device):
+    model, tokenizer = fakemodel_and_tokenizer
+    model.to(device)
+
+    texts = [
+        'My name is Roger',
+        'The capital of Morocco is Rabat',
+        'Google is owned by Alphabet'
+    ]
+    
+    multi_choices_parser = MultiChoicesParser([texts])
+
+    inputs = tokenizer(texts, return_tensors='pt', padding=True).to(device)
+
+    logprobs_global = divergent_logprob(inputs.input_ids, inputs.attention_mask, model, multi_choices_parser)
+
+    logprobs_individual = []
+
+    for input_ids, attention_mask in zip(inputs.input_ids, inputs.attention_mask):
+        input_ids, attention_mask = input_ids.unsqueeze(0), attention_mask.unsqueeze(0)
+        logprobs_individual.append(divergent_logprob(input_ids, attention_mask, model, multi_choices_parser))
+    logprobs_individual = torch.tensor(logprobs_global)
+
+    assert (logprobs_individual == logprobs_global).all()
