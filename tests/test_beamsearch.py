@@ -203,9 +203,11 @@ def test_vanilla_beamsearch(model_and_tokenizer, device):
     ).all()
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
-def test_element_wise_equivalence_divergent_logprob(fakemodel_and_tokenizer, device):
+@pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float32])
+def test_element_wise_equivalence_divergent_logprob(fakemodel_and_tokenizer, device, dtype):
     model, tokenizer = fakemodel_and_tokenizer
     model.to(device)
+    model.to(dtype)
 
     texts = [
         'My name is Roger',
