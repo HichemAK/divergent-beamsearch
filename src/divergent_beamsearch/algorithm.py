@@ -35,12 +35,17 @@ def apply_mask_tokens(pred : torch.Tensor, parsers_tokens):
     return pred[~pred.isinf().all(dim=-1)]
 
 
-def batched_inference_logits(model : GPT2LMHeadModel, input_ids : torch.Tensor, attention_mask : torch.Tensor | None = None, batch_size : int = 32) -> torch.Tensor:
+def batched_inference_logits(model : GPT2LMHeadModel, input_ids : torch.Tensor, 
+                             attention_mask : torch.Tensor | None = None, batch_size : int = 32,
+                             to_cpu=False) -> torch.Tensor:
     logits = []
     if attention_mask is None:
         attention_mask = torch.ones_like(input_ids)
     for i in range(0, input_ids.shape[0], batch_size):
-        logits.append(model(input_ids[i:i+batch_size], attention_mask=attention_mask[i:i+batch_size]).logits)
+        l = model(input_ids[i:i+batch_size], attention_mask=attention_mask[i:i+batch_size]).logits
+        if to_cpu:
+            l = l.cpu()
+        logits.append(l)
     return torch.cat(logits, dim=0)
 
 def select_mask(source : list, mask : list[bool]) -> list:
@@ -91,7 +96,9 @@ def pad_to_same_size(tensors : list[torch.Tensor], padding_value : int) -> torch
     return torch.cat(padded_tensors, dim=0)
 
 @torch.no_grad()
-def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, max_length : int, parser : Parser, pad_token_id : int, batch_size=32, num_solutions = None, end_symb=DEFAULT_END_SYMB) -> tuple[torch.Tensor, torch.Tensor]:
+def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, 
+                         max_length : int, parser : Parser, pad_token_id : int, batch_size=32, 
+                         num_solutions = None, end_symb=DEFAULT_END_SYMB, optimize_gpu_mem=True) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
     device = input_ids.device
     input_ids = input_ids.cpu()
@@ -114,7 +121,7 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam
     for _ in range(max_length):
         if len(input_ids_unfinished) == 0:
             break
-        pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size=batch_size)[:, -1].cpu()
+        pred = batched_inference_logits(model, input_ids_unfinished.to(device), batch_size=batch_size, to_cpu=optimize_gpu_mem)[:, -1].cpu()
         parsers_tokens, can_end = get_parsers_tokens(parsers_unfinished, end_symb)
         logprobs = torch.log_softmax(pred, dim=-1)
         logprobs_filtered = apply_mask_tokens(logprobs, parsers_tokens)
@@ -175,7 +182,7 @@ def set_slice_row(x : torch.Tensor, slices : torch.IntTensor, value) -> torch.Te
 @torch.no_grad()
 def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : GPT2LMHeadModel, 
                       parsers : Parser | list[Parser] | None, batch_size=32, 
-                      start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB) -> torch.FloatTensor:
+                      start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB, optimize_gpu_mem=True) -> torch.FloatTensor:
     if start is None:
         start = 1
     if isinstance(start, int):
@@ -188,7 +195,7 @@ def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | 
     if attention_mask is None:
         attention_mask = torch.ones_like(input_ids)
 
-    logits = batched_inference_logits(model, input_ids, attention_mask, batch_size).cpu()
+    logits = batched_inference_logits(model, input_ids, attention_mask, batch_size, to_cpu=optimize_gpu_mem).cpu()
     input_ids = input_ids.cpu()
     attention_mask = attention_mask.cpu()
 
