@@ -73,7 +73,7 @@ wheels = [
 
 [[package]]
 name = "divergent-beamsearch"
-version = "0.1.5"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "multi-choices-parser" },
@@ -88,7 +88,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "multi-choices-parser", specifier = ">=0.9.61" },
+    { name = "multi-choices-parser", specifier = ">=0.9.72" },
     { name = "torch", specifier = ">=2.0.0" },
     { name = "transformers", specifier = ">=4.47.1" },
 ]
@@ -221,11 +221,18 @@ wheels = [
 
 [[package]]
 name = "multi-choices-parser"
-version = "0.9.61"
+version = "0.9.72"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e2/17/90a6125a2145c03e39c3e7f78f65121eb14dedb9de8b40aee3c8a24a709b/multi_choices_parser-0.9.61.tar.gz", hash = "sha256:be932cac4aeabe9ee057c6d4592ea4325a0a92e52758d77a9e08bafa2cd23294", size = 7889 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/4f/c5a514a510779202ff37505220edfba9154ceff31958ed71fa1878781af9/multi_choices_parser-0.9.61-py3-none-any.whl", hash = "sha256:36bc367bceb66bbfb1bea26d9a38aa9cd10273b54cef331dd7c69da582fb9c2a", size = 6870 },
+    { url = "https://files.pythonhosted.org/packages/ab/14/7a99908c455ed355563c1a59c3953fd2e1e0b8bd3699f616adf44f31c019/multi_choices_parser-0.9.72-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:7554b9928b663952d50dad2be070b33eac12a7cf0a5d0237ca273f075e598d09", size = 99165 },
+    { url = "https://files.pythonhosted.org/packages/aa/3c/fb13affb1061050fb0f2988d1fdd0f37943e17abf1644ac681d6cda45615/multi_choices_parser-0.9.72-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4700eab86215bd4f0da9fcea0650e5336bc22d62a77625b2d3d1b1a83081b0d4", size = 139545 },
+    { url = "https://files.pythonhosted.org/packages/47/c0/5b47daed1dd6cff64c602cdcefda285eacfdf71f43d0452ed2f68e17ae9e/multi_choices_parser-0.9.72-cp311-cp311-win_amd64.whl", hash = "sha256:65725c593363b8c207748478ca966e5fc0288118b95c2e6b7cc338003417a185", size = 105544 },
+    { url = "https://files.pythonhosted.org/packages/51/98/10331d2da4c0c036720f1cd41a60f33cf35a4ac2aad963dd58e486d97ccb/multi_choices_parser-0.9.72-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:277ed1e6e4c7044313281caa5c20cb09eab518f27271001afea748793acc26a9", size = 99360 },
+    { url = "https://files.pythonhosted.org/packages/98/6a/5c90c3b19013aa02b40ed6ef193213bfb4ad92e4500c8e1009e712c0d6db/multi_choices_parser-0.9.72-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:441ef6dd784c9d7fbf0effe66f2e910ad308604749924e0dccec79fd24cfdf2e", size = 138117 },
+    { url = "https://files.pythonhosted.org/packages/07/13/4c601c9336b7a83e762937c2d75823964a9a9773903cba2696ec59107dbf/multi_choices_parser-0.9.72-cp312-cp312-win_amd64.whl", hash = "sha256:28ac8cea47639b434fc88e143f5d38a0bd5ab4ce9a040a036e532896185d672b", size = 105658 },
+    { url = "https://files.pythonhosted.org/packages/db/9d/8ea1f8a87282da07b0d5044c682566a68eced933bb675c8936400bb72a54/multi_choices_parser-0.9.72-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:3dfd87c968a6e5618a0cacc3d29fa244cf427208829eeda82802fd60250ea1b3", size = 99398 },
+    { url = "https://files.pythonhosted.org/packages/8b/8d/f0a244c59e13e4591e5be9f0793a22e3cde6b631801f9473e96fe44c76bb/multi_choices_parser-0.9.72-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c99dae2ba228c9362648ed66bd9790df07a71176f22938595487605b489a8dc8", size = 138403 },
+    { url = "https://files.pythonhosted.org/packages/f3/f2/73e929b894fe379be5e1b8d373c9acf66c5b34da3f886edbe22ff8725593/multi_choices_parser-0.9.72-cp313-cp313-win_amd64.whl", hash = "sha256:9576300f71ba688f799832e8b86b3cb24ea74cde29aa4e70ac63ec7545e32790", size = 105658 },
 ]
 
 [[package]]

@@ -1,6 +1,9 @@
 import math
 import torch
-from transformers import GPT2LMHeadModel
+try:
+    from transformers import GPT2LMHeadModel
+except ImportError:
+    pass
 from multi_choices_parser import DEFAULT_END_SYMB
 
 
@@ -35,7 +38,7 @@ def apply_mask_tokens(pred : torch.Tensor, parsers_tokens):
     return pred[~pred.isinf().all(dim=-1)]
 
 
-def batched_inference_logits(model : GPT2LMHeadModel, input_ids : torch.Tensor, 
+def batched_inference_logits(model : "GPT2LMHeadModel", input_ids : torch.Tensor, 
                              attention_mask : torch.Tensor | None = None, batch_size : int = 32,
                              to_cpu=False) -> torch.Tensor:
     logits = []
@@ -96,7 +99,7 @@ def pad_to_same_size(tensors : list[torch.Tensor], padding_value : int) -> torch
     return torch.cat(padded_tensors, dim=0)
 
 @torch.no_grad()
-def divergent_beamsearch(input_ids : torch.Tensor, model : GPT2LMHeadModel, beam_size : int, 
+def divergent_beamsearch(input_ids : torch.Tensor, model : "GPT2LMHeadModel", beam_size : int, 
                          max_length : int, parser : Parser, pad_token_id : int, batch_size=32, 
                          num_solutions = None, end_symb=DEFAULT_END_SYMB, optimize_gpu_mem=True) -> tuple[torch.Tensor, torch.Tensor]:
     assert input_ids.shape[0] == 1, "Batch size must be 1"
@@ -180,7 +183,7 @@ def set_slice_row(x : torch.Tensor, slices : torch.IntTensor, value) -> torch.Te
         x[i].index_fill_(0, indices[i], 0)
 
 @torch.no_grad()
-def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : GPT2LMHeadModel, 
+def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | None, model : "GPT2LMHeadModel", 
                       parsers : Parser | list[Parser] | None, batch_size=32, 
                       start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB, optimize_gpu_mem=True) -> torch.FloatTensor:
     if start is None:

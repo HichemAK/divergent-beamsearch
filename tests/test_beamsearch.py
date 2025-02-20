@@ -79,11 +79,13 @@ def test_divergent_beamsearch(model_and_tokenizer, device, end_symb):
         end_symb=end_symb
     )
     true_solutions = torch.nn.utils.rnn.pad_sequence([torch.tensor(ans) for ans in tokenized_answers], batch_first=True, padding_value=pad_token_id)
-    assert (solutions == true_solutions).all(), "Beam search did not return the expected solutions"
+    
     assert torch.isclose(scores[0], logprob_paris_diverge), "Beam search did not return the expected score"
     assert torch.isclose(scores[1], logprob_madrid), "Beam search did not return the expected score"
     assert torch.isclose(scores[2], logprob_paris_hilton), "Beam search did not return the expected score"
     assert torch.isclose(scores[3], logprob_garbage), "Beam search did not return the expected score"
+    assert (solutions == true_solutions).all(), "Beam search did not return the expected solutions"
+
 
 
 @pytest.mark.parametrize("device", ['cpu', 'cuda'])
