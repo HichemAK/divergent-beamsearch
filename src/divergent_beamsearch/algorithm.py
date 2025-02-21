@@ -75,6 +75,7 @@ class AcceptEverythingParser(Parser):
     def __init__(self, vocab_size : int):
         self.vocab_size = vocab_size
         self.tokens = tuple(range(vocab_size))
+        self.finished = False
 
     def step(self, token):
         pass
