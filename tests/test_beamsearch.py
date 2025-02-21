@@ -217,9 +217,8 @@ def test_element_wise_equivalence_divergent_logprob(fakemodel_and_tokenizer, dev
         'Google is owned by Alphabet'
     ]
     
-    multi_choices_parser = MultiChoicesParser([texts])
-
     inputs = tokenizer(texts, return_tensors='pt', padding=True).to(device)
+    multi_choices_parser = MultiChoicesParser([[x[1:] for x in tokenizer(texts).input_ids]])
 
     logprobs_global = divergent_logprob(inputs.input_ids, inputs.attention_mask, model, multi_choices_parser)
 

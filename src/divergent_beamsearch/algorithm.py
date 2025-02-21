@@ -1,4 +1,5 @@
 import math
+import multi_choices_parser
 import torch
 try:
     from transformers import GPT2LMHeadModel
@@ -163,9 +164,11 @@ def divergent_beamsearch(input_ids : torch.Tensor, model : "GPT2LMHeadModel", be
         input_ids_unfinished = torch.cat([input_ids_unfinished[best_tokens_row], best_tokens.unsqueeze(-1)], dim=-1)
         scores_unfinished = scores_unfinished[best_tokens_row] + best_tokens_logprobs
         solutions_unfinished = torch.cat([solutions_unfinished[best_tokens_row], best_tokens.unsqueeze(-1)], dim=-1)
+        best_tokens_row = best_tokens_row.tolist()
         parsers_unfinished = [parsers_unfinished[row].copy() for row in best_tokens_row]
-        for parser, token in zip(parsers_unfinished, best_tokens.tolist()):
-            parser.step(token)
+        for parser, token, row in zip(parsers_unfinished, best_tokens.tolist(), best_tokens_row):
+            if not parser.finished:
+                parser.step(token)
 
     # Special case of vanilla beam search where all answers are valid
     # Warning : In this case model will not stop on end_of_sentence token
@@ -187,6 +190,7 @@ def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | 
                       parsers : Parser | list[Parser] | None, batch_size=32, 
                       start : int | torch.IntTensor = None, end_symb=DEFAULT_END_SYMB, optimize_gpu_mem=True) -> torch.FloatTensor:
     if start is None:
+        # Start at 1 because first token logprobs cannot be computed
         start = 1
     if isinstance(start, int):
         start = torch.tensor([start]*input_ids.shape[0])
@@ -225,8 +229,9 @@ def divergent_logprob(input_ids : torch.Tensor, attention_mask : torch.Tensor | 
         for input_id, att in zip(input_ids[i, start:].tolist(), attention_mask[i, start:].tolist()):
             if not att:
                 break
+            assert not parser.finished
             parser.step(input_id)
-        next_tokens = list(parser.next())
+        next_tokens = parser.next()
         try:
             next_tokens.remove(end_symb)
         except ValueError:
